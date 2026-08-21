@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [cycles, setCycles] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [repoMeta] = useState({
+  const [repoMeta, setRepoMeta] = useState({
     owner: 'nodeatlas-org',
     repo: 'ecommerce-microservices-demo',
     branch: 'main'
@@ -45,7 +45,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadData();
+    // Auto trigger initial analysis on mount if no stats exist
+    handleAnalyze();
   }, [repoId]);
 
   const handleAnalyze = async () => {
@@ -70,6 +71,13 @@ export default function DashboardPage() {
         lastAnalyzed={stats?.lastAnalyzedAt}
         isAnalyzing={isAnalyzing}
         onAnalyze={handleAnalyze}
+        onSelectRepo={(repo) => {
+          setRepoMeta({
+            owner: repo.owner,
+            repo: repo.name,
+            branch: repo.defaultBranch || 'main'
+          });
+        }}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
@@ -88,7 +96,7 @@ export default function DashboardPage() {
             className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs shadow transition disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
-            <span>{stats ? 'Re-run Graph Analysis' : 'Run Initial Analysis'}</span>
+            <span>{isAnalyzing ? 'Analyzing Repository...' : 'Re-run Graph Analysis'}</span>
           </button>
         </div>
 
