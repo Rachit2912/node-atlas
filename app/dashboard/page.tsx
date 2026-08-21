@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { NavigationHeader } from '@/components/navigation-header';
+import { useRepo } from '@/lib/hooks/use-repo';
 import Link from 'next/link';
 import {
   FileCode,
@@ -15,23 +16,23 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const { repoMeta, repoId, selectRepo } = useRepo();
   const [stats, setStats] = useState<any>(null);
   const [cycles, setCycles] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [repoMeta, setRepoMeta] = useState({
-    owner: 'nodeatlas-org',
-    repo: 'ecommerce-microservices-demo',
-    branch: 'main'
-  });
-
-  const repoId = `repo_${repoMeta.owner}_${repoMeta.repo}`;
 
   const loadData = async () => {
     try {
       const statsRes = await fetch(`/api/repositories/${repoId}/stats`);
       if (statsRes.ok) {
         const statsData = await statsRes.json();
-        setStats(statsData.stats);
+        if (statsData.stats) {
+          setStats(statsData.stats);
+        } else {
+          // No stats yet, trigger initial analysis
+          await handleAnalyze();
+          return;
+        }
       }
 
       const cyclesRes = await fetch(`/api/repositories/${repoId}/cycles`);
@@ -45,8 +46,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    // Auto trigger initial analysis on mount if no stats exist
-    handleAnalyze();
+    loadData();
   }, [repoId]);
 
   const handleAnalyze = async () => {
@@ -57,7 +57,17 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(repoMeta)
       });
-      await loadData();
+      // reload after analysis completes
+      const statsRes = await fetch(`/api/repositories/${repoId}/stats`);
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData.stats);
+      }
+      const cyclesRes = await fetch(`/api/repositories/${repoId}/cycles`);
+      if (cyclesRes.ok) {
+        const cyclesData = await cyclesRes.json();
+        setCycles(cyclesData);
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -72,10 +82,10 @@ export default function DashboardPage() {
         isAnalyzing={isAnalyzing}
         onAnalyze={handleAnalyze}
         onSelectRepo={(repo) => {
-          setRepoMeta({
+          selectRepo({
             owner: repo.owner,
-            repo: repo.name,
-            branch: repo.defaultBranch || 'main'
+            name: repo.name || repo.repo,
+            defaultBranch: repo.defaultBranch || repo.branch || 'main'
           });
         }}
       />

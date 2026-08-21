@@ -3,21 +3,16 @@
 import React, { useState } from 'react';
 import { NavigationHeader } from '@/components/navigation-header';
 import { GraphViewer } from '@/components/graph/graph-viewer';
+import { useRepo } from '@/lib/hooks/use-repo';
 import { ShieldAlert, Search, ArrowRight } from 'lucide-react';
 
 export default function SecurityPage() {
+  const { repoMeta, repoId, selectRepo } = useRepo();
   const [target, setTarget] = useState('lodash');
   const [targetType, setTargetType] = useState<'Auto' | 'Package' | 'Service' | 'File'>('Auto');
   const [impactResult, setImpactResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const repoMeta = {
-    owner: 'nodeatlas-org',
-    repo: 'ecommerce-microservices-demo',
-    branch: 'main'
-  };
-  const repoId = `repo_${repoMeta.owner}_${repoMeta.repo}`;
 
   const handleAnalyzeImpact = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -61,6 +56,13 @@ export default function SecurityPage() {
         branch={repoMeta.branch}
         isAnalyzing={isAnalyzing}
         onAnalyze={handleReanalyzeRepo}
+        onSelectRepo={(repo) => {
+          selectRepo({
+            owner: repo.owner,
+            name: repo.name || repo.repo,
+            defaultBranch: repo.defaultBranch || repo.branch || 'main'
+          });
+        }}
       />
 
       <div className="flex-1 flex overflow-hidden">

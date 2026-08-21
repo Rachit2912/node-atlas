@@ -41,44 +41,87 @@ export function GraphViewer({
 
   const { initialNodes, initialEdges } = useMemo(() => {
     const nodesCount = graphData.nodes.length;
-    const cols = Math.ceil(Math.sqrt(nodesCount * 1.5));
+    const cols = Math.ceil(Math.sqrt(nodesCount * 1.8));
+
+    let cycleStartNodeId: string | null = null;
+    let cycleEndNodeId: string | null = null;
+
+    if (highlightNodeIds.length > 0) {
+      cycleStartNodeId = highlightNodeIds[0];
+      if (highlightNodeIds.length > 1) {
+        const lastIdx = highlightNodeIds.length - 1;
+        if (highlightNodeIds[lastIdx] === highlightNodeIds[0] && highlightNodeIds.length > 2) {
+          cycleEndNodeId = highlightNodeIds[lastIdx - 1];
+        } else {
+          cycleEndNodeId = highlightNodeIds[lastIdx];
+        }
+      }
+    }
 
     const nodes: Node[] = graphData.nodes.map((n, idx) => {
       const row = Math.floor(idx / cols);
       const col = idx % cols;
-      const isHighlighted = highlightSet.size > 0 && highlightSet.has(n.id);
 
-      let borderColor = 'border-slate-700';
-      let bgColor = 'bg-slate-900';
+      const isStartNode = n.id === cycleStartNodeId;
+      const isEndNode = n.id === cycleEndNodeId;
+      const isCycleNode = highlightSet.has(n.id);
+
+      let borderColor = 'border-slate-700/80';
+      let bgColor = 'bg-slate-900/90';
       let textColor = 'text-slate-200';
+      let badge: React.ReactNode = null;
 
       if (n.type === 'File') {
-        borderColor = 'border-blue-500/50';
-        bgColor = 'bg-blue-950/40';
+        borderColor = 'border-blue-500/40';
+        bgColor = 'bg-slate-900/95';
       } else if (n.type === 'Package') {
-        borderColor = 'border-amber-500/50';
-        bgColor = 'bg-amber-950/40';
+        borderColor = 'border-amber-500/40';
+        bgColor = 'bg-amber-950/30';
       } else if (n.type === 'Service') {
-        borderColor = 'border-purple-500/50';
-        bgColor = 'bg-purple-950/40';
+        borderColor = 'border-purple-500/40';
+        bgColor = 'bg-purple-950/30';
       }
 
-      if (isHighlighted) {
-        borderColor = 'border-red-500 ring-2 ring-red-500/50';
-        bgColor = 'bg-red-950/80';
-        textColor = 'text-white font-bold';
+      if (isStartNode) {
+        borderColor = 'border-emerald-400 ring-2 ring-emerald-400/80 shadow-emerald-950/50 shadow-lg';
+        bgColor = 'bg-emerald-950/90';
+        textColor = 'text-emerald-100 font-bold';
+        badge = (
+          <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-extrabold bg-emerald-500 text-slate-950 ml-2 shadow-sm shrink-0">
+            Cycle Start
+          </span>
+        );
+      } else if (isEndNode) {
+        borderColor = 'border-red-500 ring-2 ring-red-500/80 shadow-red-950/50 shadow-lg';
+        bgColor = 'bg-red-950/90';
+        textColor = 'text-red-100 font-bold';
+        badge = (
+          <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-extrabold bg-red-500 text-white ml-2 shadow-sm shrink-0">
+            Cycle End
+          </span>
+        );
+      } else if (isCycleNode) {
+        borderColor = 'border-amber-500 ring-1 ring-amber-500/60';
+        bgColor = 'bg-amber-950/70';
+        textColor = 'text-amber-100 font-semibold';
+        badge = (
+          <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 ml-2 shrink-0">
+            In Loop
+          </span>
+        );
       }
 
       return {
         id: n.id,
-        position: { x: col * 260 + 50, y: row * 120 + 50 },
+        position: { x: col * 320 + 40, y: row * 140 + 40 },
         data: {
           label: (
-            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-md border ${borderColor} ${bgColor} ${textColor} text-xs font-mono shadow-md`}>
-              {n.type === 'File' && <FileCode className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
-              {n.type === 'Package' && <Package className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-              {n.type === 'Service' && <Server className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
-              <span className="truncate max-w-[180px]">{n.label}</span>
+            <div className={`flex items-center space-x-2.5 px-3.5 py-2.5 rounded-lg border ${borderColor} ${bgColor} ${textColor} text-xs font-mono shadow-lg backdrop-blur-sm whitespace-nowrap min-w-[220px]`}>
+              {n.type === 'File' && <FileCode className="w-4 h-4 text-blue-400 shrink-0" />}
+              {n.type === 'Package' && <Package className="w-4 h-4 text-amber-400 shrink-0" />}
+              {n.type === 'Service' && <Server className="w-4 h-4 text-purple-400 shrink-0" />}
+              <span className="font-medium tracking-tight">{n.label}</span>
+              {badge}
             </div>
           )
         },
@@ -87,26 +130,26 @@ export function GraphViewer({
     });
 
     const edges: Edge[] = graphData.edges.map((e) => {
-      const isHighlighted = highlightSet.has(e.source) && highlightSet.has(e.target);
+      const isCycleEdge = highlightSet.has(e.source) && highlightSet.has(e.target);
       return {
         id: e.id || `${e.source}->${e.target}`,
         source: e.source,
         target: e.target,
         type: 'smoothstep',
-        animated: isHighlighted,
+        animated: isCycleEdge,
         style: {
-          stroke: isHighlighted ? '#ef4444' : '#475569',
-          strokeWidth: isHighlighted ? 2.5 : 1.2
+          stroke: isCycleEdge ? '#ef4444' : '#475569',
+          strokeWidth: isCycleEdge ? 2.5 : 1.2
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isHighlighted ? '#ef4444' : '#475569'
+          color: isCycleEdge ? '#ef4444' : '#475569'
         }
       };
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [graphData, highlightSet]);
+  }, [graphData, highlightSet, highlightNodeIds]);
 
   if (!graphData.nodes || graphData.nodes.length === 0) {
     return (

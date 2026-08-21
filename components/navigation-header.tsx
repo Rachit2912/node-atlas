@@ -42,7 +42,13 @@ export function NavigationHeader({
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    fetchRepositories();
+    const savedToken = typeof window !== 'undefined' ? localStorage.getItem('nodeatlas_github_token') : null;
+    if (savedToken) {
+      setIsConnected(true);
+      fetchRepositories(savedToken);
+    } else {
+      fetchRepositories();
+    }
   }, []);
 
   const fetchRepositories = async (token?: string) => {
@@ -60,6 +66,7 @@ export function NavigationHeader({
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tokenInput.trim()) return;
     try {
       const res = await fetch('/api/github/connect', {
         method: 'POST',
@@ -67,13 +74,21 @@ export function NavigationHeader({
         body: JSON.stringify({ token: tokenInput })
       });
       if (res.ok) {
+        localStorage.setItem('nodeatlas_github_token', tokenInput.trim());
         setIsConnected(true);
         setShowConnectModal(false);
-        await fetchRepositories(tokenInput);
+        await fetchRepositories(tokenInput.trim());
       }
     } catch {
       // Fallback
     }
+  };
+
+  const handleDisconnect = () => {
+    localStorage.removeItem('nodeatlas_github_token');
+    setIsConnected(false);
+    setTokenInput('');
+    fetchRepositories();
   };
 
   const navItems = [
@@ -132,14 +147,28 @@ export function NavigationHeader({
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Connect GitHub Button */}
-          <button
-            onClick={() => setShowConnectModal(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
-          >
-            <Key className="w-3.5 h-3.5 text-slate-400" />
-            <span>{isConnected ? 'GitHub Connected' : 'Connect GitHub'}</span>
-          </button>
+          {/* Connect / Disconnect GitHub Button */}
+          {isConnected ? (
+            <div className="flex items-center space-x-1 bg-emerald-950/40 border border-emerald-800/60 rounded-md px-2.5 py-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-xs text-emerald-300 font-medium font-mono">GitHub Connected</span>
+              <button
+                onClick={handleDisconnect}
+                className="ml-2 text-[11px] text-slate-400 hover:text-red-400 underline transition"
+                title="Disconnect GitHub Token"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowConnectModal(true)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
+            >
+              <Key className="w-3.5 h-3.5 text-slate-400" />
+              <span>Connect GitHub</span>
+            </button>
+          )}
 
           {lastAnalyzed && (
             <span className="text-xs text-slate-400 font-mono hidden md:inline">

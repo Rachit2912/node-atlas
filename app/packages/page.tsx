@@ -2,20 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { NavigationHeader } from '@/components/navigation-header';
+import { useRepo } from '@/lib/hooks/use-repo';
 import { Package, ExternalLink, ShieldAlert, FileCode } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PackagesPage() {
+  const { repoMeta, repoId, selectRepo } = useRepo();
   const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
   const [searchTerm, setSearchTerm] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const repoMeta = {
-    owner: 'nodeatlas-org',
-    repo: 'ecommerce-microservices-demo',
-    branch: 'main'
-  };
-  const repoId = `repo_${repoMeta.owner}_${repoMeta.repo}`;
 
   const loadGraph = async () => {
     try {
@@ -60,6 +55,13 @@ export default function PackagesPage() {
         branch={repoMeta.branch}
         isAnalyzing={isAnalyzing}
         onAnalyze={handleAnalyze}
+        onSelectRepo={(repo) => {
+          selectRepo({
+            owner: repo.owner,
+            name: repo.name || repo.repo,
+            defaultBranch: repo.defaultBranch || repo.branch || 'main'
+          });
+        }}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">

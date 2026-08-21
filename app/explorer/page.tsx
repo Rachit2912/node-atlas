@@ -3,28 +3,27 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationHeader } from '@/components/navigation-header';
 import { GraphViewer } from '@/components/graph/graph-viewer';
+import { useRepo } from '@/lib/hooks/use-repo';
 import { Search } from 'lucide-react';
 
 export default function ExplorerPage() {
+  const { repoMeta, repoId, selectRepo } = useRepo();
   const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const repoMeta = {
-    owner: 'nodeatlas-org',
-    repo: 'ecommerce-microservices-demo',
-    branch: 'main'
-  };
-  const repoId = `repo_${repoMeta.owner}_${repoMeta.repo}`;
-
   const loadGraph = async () => {
     try {
       const res = await fetch(`/api/repositories/${repoId}/graph`);
       if (res.ok) {
         const data = await res.json();
-        setGraphData(data);
+        if (data && data.nodes && data.nodes.length > 0) {
+          setGraphData(data);
+        } else {
+          await handleAnalyze();
+        }
       }
     } catch {
       // Fallback
@@ -71,6 +70,13 @@ export default function ExplorerPage() {
         branch={repoMeta.branch}
         isAnalyzing={isAnalyzing}
         onAnalyze={handleAnalyze}
+        onSelectRepo={(repo) => {
+          selectRepo({
+            owner: repo.owner,
+            name: repo.name || repo.repo,
+            defaultBranch: repo.defaultBranch || repo.branch || 'main'
+          });
+        }}
       />
 
       <div className="flex-1 flex overflow-hidden">

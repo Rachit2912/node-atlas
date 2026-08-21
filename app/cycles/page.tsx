@@ -3,23 +3,28 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationHeader } from '@/components/navigation-header';
 import { GraphViewer } from '@/components/graph/graph-viewer';
+import { useRepo } from '@/lib/hooks/use-repo';
 import { RefreshCw, CheckCircle2 } from 'lucide-react';
 
 export default function CyclesPage() {
+  const { repoMeta, repoId, selectRepo } = useRepo();
   const [cycles, setCycles] = useState<any[]>([]);
   const [selectedCycle, setSelectedCycle] = useState<any>(null);
   const [graphData, setGraphData] = useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const repoMeta = {
-    owner: 'nodeatlas-org',
-    repo: 'ecommerce-microservices-demo',
-    branch: 'main'
-  };
-  const repoId = `repo_${repoMeta.owner}_${repoMeta.repo}`;
-
   const loadCycles = async () => {
     try {
+      const graphRes = await fetch(`/api/repositories/${repoId}/graph`);
+      if (graphRes.ok) {
+        const gData = await graphRes.json();
+        if (!gData || !gData.nodes || gData.nodes.length === 0) {
+          await handleAnalyze();
+          return;
+        }
+        setGraphData(gData);
+      }
+
       const res = await fetch(`/api/repositories/${repoId}/cycles`);
       if (res.ok) {
         const data = await res.json();
@@ -27,12 +32,6 @@ export default function CyclesPage() {
         if (data.length > 0 && !selectedCycle) {
           setSelectedCycle(data[0]);
         }
-      }
-
-      const graphRes = await fetch(`/api/repositories/${repoId}/graph`);
-      if (graphRes.ok) {
-        const gData = await graphRes.json();
-        setGraphData(gData);
       }
     } catch {
       // Fallback
@@ -69,6 +68,13 @@ export default function CyclesPage() {
         branch={repoMeta.branch}
         isAnalyzing={isAnalyzing}
         onAnalyze={handleAnalyze}
+        onSelectRepo={(repo) => {
+          selectRepo({
+            owner: repo.owner,
+            name: repo.name || repo.repo,
+            defaultBranch: repo.defaultBranch || repo.branch || 'main'
+          });
+        }}
       />
 
       <div className="flex-1 flex overflow-hidden">
