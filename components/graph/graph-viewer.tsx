@@ -12,15 +12,17 @@ import {
 } from '@xyflow/react';
 import {
   FileCode,
-  Package,
+  Package as PackageIcon,
   Server,
   AlertTriangle,
   Search,
   Eye,
   EyeOff,
   SlidersHorizontal,
+  Sparkles,
   Layers,
-  Sparkles
+  ChevronRight,
+  Database
 } from 'lucide-react';
 
 interface GraphViewerProps {
@@ -52,18 +54,35 @@ export function GraphViewer({
   const [visibleTypes, setVisibleTypes] = useState<Record<string, boolean>>({
     File: true,
     Package: true,
-    Service: true
+    PackageVersion: true,
+    Service: true,
+    Repository: true
   });
-  const [showLegend, setShowLegend] = useState(false);
+  const [showLeftSidebar, setShowLeftSidebar] = useState(true);
 
   const highlightSet = useMemo(() => new Set(highlightNodeIds), [highlightNodeIds]);
 
+  // Aggregate statistics for node labels & relationships matching CognoDB Browser sidebar
   const stats = useMemo(() => {
-    const fileCount = graphData.nodes.filter((n) => n.type === 'File').length;
-    const pkgCount = graphData.nodes.filter((n) => n.type === 'Package').length;
-    const svcCount = graphData.nodes.filter((n) => n.type === 'Service').length;
-    const edgeCount = graphData.edges.length;
-    return { fileCount, pkgCount, svcCount, edgeCount };
+    const counts: Record<string, number> = {
+      File: 0,
+      Package: 0,
+      PackageVersion: 0,
+      Service: 0,
+      Repository: 0
+    };
+    graphData.nodes.forEach((n) => {
+      const t = n.type || 'File';
+      counts[t] = (counts[t] || 0) + 1;
+    });
+
+    const relCounts: Record<string, number> = {};
+    graphData.edges.forEach((e) => {
+      const rel = e.type || 'DEPENDS_ON';
+      relCounts[rel] = (relCounts[rel] || 0) + 1;
+    });
+
+    return { counts, relCounts, totalNodes: graphData.nodes.length, totalEdges: graphData.edges.length };
   }, [graphData]);
 
   const filteredData = useMemo(() => {
@@ -84,7 +103,9 @@ export function GraphViewer({
 
   const { initialNodes, initialEdges } = useMemo(() => {
     const nodesCount = filteredData.nodes.length;
-    const cols = Math.max(3, Math.ceil(Math.sqrt(nodesCount * 1.8)));
+    // Circular / Spiral layout positioning for authentic CognoDB graph network look
+    const radiusStep = 180;
+    const center = { x: 450, y: 350 };
 
     let cycleStartNodeId: string | null = null;
     let cycleEndNodeId: string | null = null;
@@ -102,97 +123,77 @@ export function GraphViewer({
     }
 
     const nodes: Node[] = filteredData.nodes.map((n, idx) => {
-      const row = Math.floor(idx / cols);
-      const col = idx % cols;
+      // Calculate layout coordinates
+      let x = center.x;
+      let y = center.y;
+      if (nodesCount > 1) {
+        const angle = (idx / nodesCount) * 2 * Math.PI;
+        const ring = Math.floor(idx / 8) + 1;
+        const r = ring * radiusStep + (idx % 2 === 0 ? 30 : -30);
+        x = center.x + r * Math.cos(angle);
+        y = center.y + r * Math.sin(angle);
+      }
 
       const isStartNode = n.id === cycleStartNodeId;
       const isEndNode = n.id === cycleEndNodeId;
       const isCycleNode = highlightSet.has(n.id);
 
-      let borderColor = 'border-slate-800 hover:border-blue-400';
-      let bgColor = 'bg-slate-900/90';
-      let textColor = 'text-slate-200';
-      let glowStyle = 'shadow-md';
-      let badge: React.ReactNode = null;
-      let labelBadge = null;
+      // Node style definitions based on CognoDB Browser
+      let orbGradient = 'from-amber-400 via-orange-500 to-amber-700 shadow-orange-500/40 border-orange-300/50';
+      let icon = <FileCode className="w-5 h-5 text-white drop-shadow" />;
+      let badgeLabel = n.type || 'File';
 
-      if (n.type === 'File') {
-        borderColor = 'border-blue-500/50 hover:border-blue-400';
-        bgColor = 'bg-slate-900/95';
-        labelBadge = (
-          <span className="text-[10px] font-mono text-blue-400 font-semibold px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
-            :File
-          </span>
-        );
-      } else if (n.type === 'Package') {
-        borderColor = 'border-amber-500/50 hover:border-amber-400';
-        bgColor = 'bg-amber-950/40';
-        labelBadge = (
-          <span className="text-[10px] font-mono text-amber-400 font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-            :Package
-          </span>
-        );
+      if (n.type === 'Package') {
+        orbGradient = 'from-purple-300 via-indigo-500 to-purple-800 shadow-purple-500/40 border-purple-300/50';
+        icon = <PackageIcon className="w-5 h-5 text-white drop-shadow" />;
+      } else if (n.type === 'PackageVersion') {
+        orbGradient = 'from-cyan-300 via-teal-400 to-cyan-700 shadow-cyan-500/40 border-cyan-300/50';
+        icon = <Sparkles className="w-4 h-4 text-white drop-shadow" />;
       } else if (n.type === 'Service') {
-        borderColor = 'border-purple-500/50 hover:border-purple-400';
-        bgColor = 'bg-purple-950/40';
-        labelBadge = (
-          <span className="text-[10px] font-mono text-purple-400 font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">
-            :Service
-          </span>
-        );
+        orbGradient = 'from-emerald-300 via-green-500 to-emerald-800 shadow-emerald-500/40 border-emerald-300/50';
+        icon = <Server className="w-5 h-5 text-white drop-shadow" />;
+      } else if (n.type === 'Repository') {
+        orbGradient = 'from-pink-400 via-rose-500 to-pink-800 shadow-pink-500/40 border-pink-300/50';
+        icon = <Database className="w-5 h-5 text-white drop-shadow" />;
       }
 
       if (isStartNode) {
-        borderColor = 'border-emerald-400 ring-2 ring-emerald-400/80';
-        bgColor = 'bg-emerald-950/95';
-        textColor = 'text-emerald-100 font-bold';
-        glowStyle = 'shadow-xl shadow-emerald-500/20';
-        badge = (
-          <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-extrabold bg-emerald-500 text-slate-950 shadow-sm shrink-0">
-            Cycle Start
-          </span>
-        );
+        orbGradient = 'from-emerald-400 via-teal-400 to-emerald-600 shadow-emerald-400/80 border-white ring-4 ring-emerald-400/80 animate-pulse';
       } else if (isEndNode) {
-        borderColor = 'border-red-500 ring-2 ring-red-500/80';
-        bgColor = 'bg-red-950/95';
-        textColor = 'text-red-100 font-bold';
-        glowStyle = 'shadow-xl shadow-red-500/20';
-        badge = (
-          <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-extrabold bg-red-500 text-white shadow-sm shrink-0">
-            Cycle End
-          </span>
-        );
+        orbGradient = 'from-red-400 via-rose-600 to-red-800 shadow-red-500/80 border-white ring-4 ring-red-500/80 animate-pulse';
       } else if (isCycleNode) {
-        borderColor = 'border-amber-500 ring-1 ring-amber-500/60';
-        bgColor = 'bg-amber-950/80';
-        textColor = 'text-amber-100 font-semibold';
-        glowStyle = 'shadow-lg shadow-amber-500/20';
-        badge = (
-          <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
-            In Loop
-          </span>
-        );
+        orbGradient = 'from-amber-300 via-orange-500 to-red-600 shadow-amber-400/60 border-amber-200 ring-2 ring-amber-400/60';
       }
 
       return {
         id: n.id,
-        position: { x: col * 340 + 40, y: row * 160 + 40 },
+        position: { x, y },
         data: {
           label: (
-            <div
-              className={`flex items-center space-x-2.5 px-4 py-3 rounded-xl border ${borderColor} ${bgColor} ${textColor} text-xs font-mono backdrop-blur-md whitespace-nowrap min-w-[240px] max-w-[360px] cursor-pointer transition-all duration-200 ${glowStyle}`}
-            >
-              <div className="p-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 shrink-0">
-                {n.type === 'File' && <FileCode className="w-4 h-4 text-blue-400" />}
-                {n.type === 'Package' && <Package className="w-4 h-4 text-amber-400" />}
-                {n.type === 'Service' && <Server className="w-4 h-4 text-purple-400" />}
+            <div className="group relative flex flex-col items-center cursor-pointer select-none">
+              {/* Glossy 3D Spherical Node */}
+              <div
+                className={`w-14 h-14 rounded-full bg-gradient-to-br ${orbGradient} shadow-xl border-2 flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}
+              >
+                {icon}
               </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <div className="flex items-center space-x-1.5">
-                  {labelBadge}
-                  {badge}
-                </div>
-                <span className="font-medium tracking-tight truncate mt-1 text-slate-200">{n.label}</span>
+
+              {/* Node Label Text Pill */}
+              <div className="mt-1.5 flex flex-col items-center">
+                <span className="px-2 py-0.5 rounded bg-slate-950/85 backdrop-blur-md border border-slate-800 text-[11px] font-mono font-medium text-slate-100 max-w-[180px] truncate shadow-md group-hover:text-blue-300 transition-colors">
+                  {n.label}
+                </span>
+
+                {isStartNode && (
+                  <span className="mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-emerald-500 text-slate-950 shadow">
+                    Cycle Start
+                  </span>
+                )}
+                {isEndNode && (
+                  <span className="mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-red-500 text-white shadow">
+                    Cycle End
+                  </span>
+                )}
               </div>
             </div>
           )
@@ -210,11 +211,11 @@ export function GraphViewer({
         type: 'smoothstep',
         animated: isCycleEdge,
         label: e.type,
-        labelStyle: { fill: isCycleEdge ? '#ef4444' : '#94a3b8', fontSize: 10, fontFamily: 'monospace' },
-        labelBgStyle: { fill: '#0f172a', rx: 4, ry: 4, fillOpacity: 0.8 },
+        labelStyle: { fill: isCycleEdge ? '#ef4444' : '#94a3b8', fontSize: 9, fontFamily: 'monospace', fontWeight: 600 },
+        labelBgStyle: { fill: '#090d16', rx: 3, ry: 3, fillOpacity: 0.9 },
         style: {
           stroke: isCycleEdge ? '#ef4444' : '#475569',
-          strokeWidth: isCycleEdge ? 2.5 : 1.2
+          strokeWidth: isCycleEdge ? 2.5 : 1.5
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -232,7 +233,7 @@ export function GraphViewer({
 
   if (!graphData.nodes || graphData.nodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 bg-slate-950 border border-slate-800 rounded-xl">
+      <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 bg-[#090d16] border border-slate-800/80 rounded-xl">
         <AlertTriangle className="w-10 h-10 mb-3 text-amber-500/80 animate-pulse" />
         <p className="text-sm font-semibold text-slate-300">No Graph Visualization Data Available</p>
         <p className="text-xs text-slate-500 mt-1 max-w-sm text-center">
@@ -243,106 +244,138 @@ export function GraphViewer({
   }
 
   return (
-    <div className="relative w-full h-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
-      {/* Top Search & Filter Toolbar */}
-      <div className="absolute top-4 left-4 z-10 flex items-center space-x-3 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-lg p-2 shadow-lg">
-        <div className="flex items-center space-x-2 bg-slate-950 px-3 py-1.5 rounded-md border border-slate-800 w-64">
+    <div className="relative w-full h-full bg-[#070a12] rounded-xl overflow-hidden border border-slate-800 shadow-2xl font-sans">
+      {/* Top Floating Search & Control Toolbar */}
+      <div className="absolute top-4 left-4 z-20 flex items-center space-x-3 bg-[#0d1322]/90 backdrop-blur-md border border-slate-800/80 rounded-lg p-2 shadow-xl">
+        <button
+          onClick={() => setShowLeftSidebar(!showLeftSidebar)}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded border text-xs font-mono transition ${
+            showLeftSidebar
+              ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
+              : 'bg-slate-800/60 border-slate-700 text-slate-400'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>{showLeftSidebar ? 'Hide Inspector' : 'Show Inspector'}</span>
+        </button>
+
+        <div className="flex items-center space-x-2 bg-[#050810] px-3 py-1.5 rounded border border-slate-800/80 w-64">
           <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="Search graph nodes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-xs text-slate-200 focus:outline-none font-mono"
+            className="w-full bg-transparent text-xs text-slate-200 focus:outline-none font-mono placeholder-slate-500"
           />
         </div>
-
-        <button
-          onClick={() => setShowLegend(!showLegend)}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md border text-xs font-mono transition ${
-            showLegend
-              ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
-              : 'bg-slate-800 border-slate-700 text-slate-400'
-          }`}
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Legend Panel</span>
-        </button>
       </div>
 
-      {/* CognoDB Overlay Side Legend Panel */}
-      {showLegend && (
-        <div className="absolute top-16 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-xl p-4 w-72 shadow-2xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <div className="flex items-center space-x-2 text-xs font-bold text-slate-200 tracking-wider uppercase">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              <span>CognoDB Graph Model</span>
-            </div>
-            <span className="text-[10px] font-mono bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">
-              Cypher Engine
-            </span>
-          </div>
-
-          {/* Node Labels Filter Section */}
+      {/* Authentic CognoDB Browser Left Sidebar */}
+      {showLeftSidebar && (
+        <div className="absolute top-16 left-4 z-20 bg-[#0d1322]/95 backdrop-blur-md border border-slate-800/90 rounded-xl p-3.5 w-64 shadow-2xl space-y-4 font-mono text-xs">
+          {/* NODE LABELS Section */}
           <div className="space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Node Labels</span>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800/80 pb-1.5">
+              <span>NODE LABELS</span>
+              <span className="text-[9px] text-slate-500 font-normal">click to toggle</span>
+            </div>
 
-            <div className="space-y-1.5">
-              <button
-                onClick={() => toggleTypeVisibility('File')}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 text-xs font-mono transition"
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50"></span>
-                  <span className="text-slate-300">:File</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-slate-500 font-bold">{stats.fileCount}</span>
-                  {visibleTypes.File ? <Eye className="w-3.5 h-3.5 text-blue-400" /> : <EyeOff className="w-3.5 h-3.5 text-slate-600" />}
-                </div>
-              </button>
-
+            <div className="space-y-1">
+              {/* Package Label */}
               <button
                 onClick={() => toggleTypeVisibility('Package')}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 text-xs font-mono transition"
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
               >
                 <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50"></span>
-                  <span className="text-slate-300">:Package</span>
+                  <span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm shadow-purple-500/50"></span>
+                  <span className={visibleTypes.Package ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                    Package
+                  </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-slate-500 font-bold">{stats.pkgCount}</span>
-                  {visibleTypes.Package ? <Eye className="w-3.5 h-3.5 text-amber-400" /> : <EyeOff className="w-3.5 h-3.5 text-slate-600" />}
-                </div>
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                  {stats.counts.Package || 0}
+                </span>
               </button>
 
+              {/* PackageVersion Label */}
               <button
-                onClick={() => toggleTypeVisibility('Service')}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 text-xs font-mono transition"
+                onClick={() => toggleTypeVisibility('PackageVersion')}
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
               >
                 <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-sm shadow-purple-500/50"></span>
-                  <span className="text-slate-300">:Service</span>
+                  <span className="w-3 h-3 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/50"></span>
+                  <span className={visibleTypes.PackageVersion ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                    PackageVersion
+                  </span>
                 </div>
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                  {stats.counts.PackageVersion || 0}
+                </span>
+              </button>
+
+              {/* File Label */}
+              <button
+                onClick={() => toggleTypeVisibility('File')}
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
+              >
                 <div className="flex items-center space-x-2">
-                  <span className="text-slate-500 font-bold">{stats.svcCount}</span>
-                  {visibleTypes.Service ? <Eye className="w-3.5 h-3.5 text-purple-400" /> : <EyeOff className="w-3.5 h-3.5 text-slate-600" />}
+                  <span className="w-3 h-3 rounded-full bg-orange-500 shadow-sm shadow-orange-500/50"></span>
+                  <span className={visibleTypes.File ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                    File
+                  </span>
                 </div>
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                  {stats.counts.File || 0}
+                </span>
+              </button>
+
+              {/* Service Label */}
+              <button
+                onClick={() => toggleTypeVisibility('Service')}
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
+                  <span className={visibleTypes.Service ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                    Service
+                  </span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                  {stats.counts.Service || 0}
+                </span>
               </button>
             </div>
           </div>
 
-          {/* Relationships Section */}
-          <div className="space-y-2 pt-1 border-t border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Relationship Edges</span>
-            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800 text-xs font-mono text-slate-300">
-              <span className="text-slate-400">Total Graph Edges</span>
-              <span className="font-bold text-slate-200">{stats.edgeCount}</span>
+          {/* RELATIONSHIPS Section */}
+          <div className="space-y-2 pt-1 border-t border-slate-800/80">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800/80 pb-1.5">
+              <span>RELATIONSHIPS</span>
             </div>
+
+            <div className="space-y-1 text-[11px] text-slate-300">
+              {Object.entries(stats.relCounts).map(([relType, count]) => (
+                <div key={relType} className="flex items-center justify-between px-2 py-1 rounded bg-slate-900/50">
+                  <span className="text-slate-400 text-[10px]">— {relType}</span>
+                  <span className="text-slate-300 font-semibold">{count}</span>
+                </div>
+              ))}
+              {Object.keys(stats.relCounts).length === 0 && (
+                <div className="text-[10px] text-slate-500 px-2 py-1">No relationships active</div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom CognoDB Stats Bar */}
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
+            <span>{filteredData.nodes.length} nodes</span>
+            <span>{filteredData.edges.length} rels</span>
           </div>
         </div>
       )}
 
+      {/* Canvas */}
       <ReactFlow
         nodes={initialNodes}
         edges={initialEdges}
@@ -354,18 +387,24 @@ export function GraphViewer({
         }}
         fitView
       >
-        <Background color="#1e293b" gap={20} size={1.5} />
-        <Controls className="bg-slate-900 border-slate-800 text-slate-200 fill-slate-200 rounded-lg overflow-hidden shadow-xl" />
+        <Background color="#1e293b" gap={24} size={1} />
+        <Controls className="bg-[#0d1322] border-slate-800 text-slate-200 fill-slate-200 rounded-lg overflow-hidden shadow-xl" />
         <MiniMap
           nodeColor={(node) => {
-            if (node.id.includes('service')) return '#a855f7';
-            if (node.id.includes('file')) return '#3b82f6';
-            return '#f59e0b';
+            if (node.id.includes('service')) return '#10b981';
+            if (node.id.includes('file')) return '#f97316';
+            if (node.id.includes('version')) return '#22d3ee';
+            return '#a855f7';
           }}
-          maskColor="rgba(15, 23, 42, 0.75)"
-          className="bg-slate-900 border-slate-800 rounded-lg overflow-hidden shadow-xl"
+          maskColor="rgba(7, 10, 18, 0.85)"
+          className="bg-[#0d1322] border-slate-800 rounded-lg overflow-hidden shadow-xl"
         />
       </ReactFlow>
+
+      {/* Bottom Hint Footer matching CognoDB Browser */}
+      <div className="absolute bottom-3 right-4 z-10 text-[10px] font-mono text-slate-500 bg-[#0d1322]/80 backdrop-blur px-2.5 py-1 rounded border border-slate-800/60">
+        click node to inspect &bull; drag to position &bull; scroll to zoom
+      </div>
     </div>
   );
 }
