@@ -7,23 +7,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const repoId = params.id;
-  let repoFiles = Array.from(inMemoryDb.files.values()).filter((f) => f.repositoryId === repoId);
-
-  // If auto-analyze is needed on first fetch
-  if (repoFiles.length === 0) {
-    let owner = 'nodeatlas-org';
-    let repo = 'ecommerce-microservices-demo';
-    if (repoId.startsWith('repo_')) {
-      const parts = repoId.replace(/^repo_/, '').split('_');
-      if (parts.length >= 2) {
-        owner = parts[0];
-        repo = parts.slice(1).join('_');
-      }
-    }
-    await runRepositoryAnalysisPipeline(owner, repo, 'main');
-    repoFiles = Array.from(inMemoryDb.files.values()).filter((f) => f.repositoryId === repoId);
-  }
-
+  const repoFiles = Array.from(inMemoryDb.files.values()).filter((f) => f.repositoryId === repoId);
   const repoServices = Array.from(inMemoryDb.services.values()).filter((s) => s.repositoryId === repoId);
   const repoCycles = Array.from(inMemoryDb.cycles.values()).filter((c) => c.repositoryId === repoId);
 

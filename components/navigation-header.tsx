@@ -40,6 +40,8 @@ export function NavigationHeader({
   const [repositories, setRepositories] = useState<any[]>([]);
   const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isDemoSeeded, setIsDemoSeeded] = useState(false);
+  const [isTogglingDemo, setIsTogglingDemo] = useState(false);
 
   useEffect(() => {
     const savedToken = typeof window !== 'undefined' ? localStorage.getItem('nodeatlas_github_token') : null;
@@ -49,7 +51,50 @@ export function NavigationHeader({
     } else {
       fetchRepositories();
     }
+    checkDemoSeedStatus();
   }, []);
+
+  const checkDemoSeedStatus = async () => {
+    try {
+      const res = await fetch('/api/demo-seed');
+      if (res.ok) {
+        const data = await res.json();
+        setIsDemoSeeded(data.seeded);
+      }
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleToggleDemoSeed = async () => {
+    setIsTogglingDemo(true);
+    try {
+      const targetState = !isDemoSeeded;
+      const res = await fetch('/api/demo-seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seed: targetState })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsDemoSeeded(data.seeded);
+        const savedToken = typeof window !== 'undefined' ? localStorage.getItem('nodeatlas_github_token') : null;
+        await fetchRepositories(savedToken || undefined);
+        if (targetState && onSelectRepo) {
+          onSelectRepo({
+            id: 'repo_nodeatlas-org_ecommerce-microservices-demo',
+            name: 'ecommerce-microservices-demo',
+            fullName: 'nodeatlas-org/ecommerce-microservices-demo',
+            defaultBranch: 'main'
+          });
+        }
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setIsTogglingDemo(false);
+    }
+  };
 
   const fetchRepositories = async (token?: string) => {
     try {
@@ -147,6 +192,21 @@ export function NavigationHeader({
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Demo Data Pre-seed Toggle Button */}
+          <button
+            onClick={handleToggleDemoSeed}
+            disabled={isTogglingDemo}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md border text-xs font-mono transition ${
+              isDemoSeeded
+                ? 'bg-amber-950/40 border-amber-700/60 text-amber-300 hover:bg-amber-900/40'
+                : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-slate-200'
+            }`}
+            title="Toggle pre-seeded demo dataset"
+          >
+            <span className={`w-2 h-2 rounded-full ${isDemoSeeded ? 'bg-amber-400 animate-pulse' : 'bg-slate-500'}`} />
+            <span>{isTogglingDemo ? 'Updating...' : isDemoSeeded ? 'Demo Seed: ON' : 'Demo Seed: OFF'}</span>
+          </button>
+
           {/* Connect / Disconnect GitHub Button */}
           {isConnected ? (
             <div className="flex items-center space-x-1 bg-emerald-950/40 border border-emerald-800/60 rounded-md px-2.5 py-1">

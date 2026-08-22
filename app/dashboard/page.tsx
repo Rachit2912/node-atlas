@@ -21,21 +21,21 @@ export default function DashboardPage() {
   const [cycles, setCycles] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  const getSavedToken = () => {
+    return typeof window !== 'undefined' ? localStorage.getItem('nodeatlas_github_token') || undefined : undefined;
+  };
+
   const loadData = async () => {
     try {
-      const statsRes = await fetch(`/api/repositories/${repoId}/stats`);
+      const token = getSavedToken();
+      const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+      const statsRes = await fetch(`/api/repositories/${repoId}/stats${tokenQuery}`);
       if (statsRes.ok) {
         const statsData = await statsRes.json();
-        if (statsData.stats) {
-          setStats(statsData.stats);
-        } else {
-          // No stats yet, trigger initial analysis
-          await handleAnalyze();
-          return;
-        }
+        setStats(statsData.stats);
       }
 
-      const cyclesRes = await fetch(`/api/repositories/${repoId}/cycles`);
+      const cyclesRes = await fetch(`/api/repositories/${repoId}/cycles${tokenQuery}`);
       if (cyclesRes.ok) {
         const cyclesData = await cyclesRes.json();
         setCycles(cyclesData);
@@ -52,18 +52,19 @@ export default function DashboardPage() {
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     try {
+      const token = getSavedToken();
       await fetch(`/api/repositories/${repoId}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(repoMeta)
+        body: JSON.stringify({ ...repoMeta, githubToken: token })
       });
-      // reload after analysis completes
-      const statsRes = await fetch(`/api/repositories/${repoId}/stats`);
+      const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+      const statsRes = await fetch(`/api/repositories/${repoId}/stats${tokenQuery}`);
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData.stats);
       }
-      const cyclesRes = await fetch(`/api/repositories/${repoId}/cycles`);
+      const cyclesRes = await fetch(`/api/repositories/${repoId}/cycles${tokenQuery}`);
       if (cyclesRes.ok) {
         const cyclesData = await cyclesRes.json();
         setCycles(cyclesData);

@@ -20,9 +20,11 @@ export class GitHubService {
   }
 
   public async getUserRepositories(): Promise<GitHubRepoMeta[]> {
+    const repos: GitHubRepoMeta[] = [];
+
     if (this.token) {
       try {
-        const res = await fetch('https://api.github.com/user/repos?per_page=100', {
+        const res = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
           headers: {
             Authorization: `Bearer ${this.token}`,
             Accept: 'application/vnd.github.v3+json',
@@ -31,36 +33,39 @@ export class GitHubService {
         });
         if (res.ok) {
           const data = await res.json();
-          return data.map((repo: any) => ({
-            id: `gh_${repo.id}`,
-            githubId: String(repo.id),
-            owner: repo.owner?.login || 'user',
-            name: repo.name,
-            fullName: repo.full_name,
-            defaultBranch: repo.default_branch || 'main',
-            url: repo.html_url,
-            createdAt: repo.created_at,
-            updatedAt: repo.updated_at
-          }));
+          data.forEach((repo: any) => {
+            repos.push({
+              id: `repo_${repo.owner?.login || 'user'}_${repo.name}`,
+              githubId: String(repo.id),
+              owner: repo.owner?.login || 'user',
+              name: repo.name,
+              fullName: repo.full_name,
+              defaultBranch: repo.default_branch || 'main',
+              url: repo.html_url,
+              createdAt: repo.created_at,
+              updatedAt: repo.updated_at
+            });
+          });
         }
       } catch {
         // Fallback
       }
     }
 
-    return [
-      {
-        id: 'repo_nodeatlas_demo',
-        githubId: '987654321',
-        owner: 'nodeatlas-org',
-        name: 'ecommerce-microservices-demo',
-        fullName: 'nodeatlas-org/ecommerce-microservices-demo',
-        defaultBranch: 'main',
-        url: 'https://github.com/nodeatlas-org/ecommerce-microservices-demo',
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: new Date().toISOString()
-      }
-    ];
+    // Include demo repo as available option if listed
+    repos.push({
+      id: 'repo_nodeatlas-org_ecommerce-microservices-demo',
+      githubId: '987654321',
+      owner: 'nodeatlas-org',
+      name: 'ecommerce-microservices-demo',
+      fullName: 'nodeatlas-org/ecommerce-microservices-demo',
+      defaultBranch: 'main',
+      url: 'https://github.com/nodeatlas-org/ecommerce-microservices-demo',
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: new Date().toISOString()
+    });
+
+    return repos;
   }
 
   public async getRepositoryTreeFiles(
@@ -68,58 +73,71 @@ export class GitHubService {
     repo: string,
     branch = 'main'
   ): Promise<ScannedFile[]> {
-    if (this.token) {
-      try {
-        const treeRes = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-          {
-            headers: {
-              Authorization: `Bearer ${this.token}`,
-              Accept: 'application/vnd.github.v3+json',
-              'User-Agent': 'NodeAtlas-SaaS'
-            }
-          }
-        );
+    const isDemoRepo = owner === 'nodeatlas-org' && repo === 'ecommerce-microservices-demo';
 
-        if (treeRes.ok) {
-          const data = await treeRes.json();
-          const tree: any[] = data.tree || [];
-
-          const filesToFetch = tree.filter((item) => {
-            if (item.type !== 'blob') return false;
-            const parts = item.path.split('/');
-            if (parts.some((p: string) => shouldIgnoreDirectory(p))) return false;
-            return isJavaScriptFile(item.path) || item.path.endsWith('package.json') || item.path.endsWith('package-lock.json');
-          });
-
-          const results: ScannedFile[] = [];
-
-          for (const item of filesToFetch) {
-            const rawRes = await fetch(
-              `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`,
-              {
-                headers: { Authorization: `Bearer ${this.token}` }
-              }
-            );
-            if (rawRes.ok) {
-              const content = await rawRes.text();
-              results.push({
-                path: item.path,
-                extension: item.path.slice(item.path.lastIndexOf('.')),
-                content,
-                size: item.size || content.length
-              });
-            }
-          }
-
-          if (results.length > 0) return results;
-        }
-      } catch {
-        // Fallback
+    try {
+      const headers: Record<string, string> = {
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'NodeAtlas-SaaS'
+      };
+      if (this.token) {
+        headers['Authorization'] = `Bearer ${this.token}`;
       }
+
+      const treeRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+        { headers }
+      );
+
+      if (treeRes.ok) {
+        const data = await treeRes.json();
+        const tree: any[] = data.tree || [];
+
+        const filesToFetch = tree.filter((item) => {
+          if (item.type !== 'blob') return false;
+          const parts = item.path.split('/');
+          if (parts.some((p: string) => shouldIgnoreDirectory(p))) return false;
+          return (
+            isJavaScriptFile(item.path) ||
+            item.path.endsWith('package.json') ||
+            item.path.endsWith('package-lock.json')
+          );
+        });
+
+        const results: ScannedFile[] = [];
+
+        for (const item of filesToFetch) {
+          const rawHeaders: Record<string, string> = {};
+          if (this.token) {
+            rawHeaders['Authorization'] = `Bearer ${this.token}`;
+          }
+
+          const rawRes = await fetch(
+            `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`,
+            { headers: rawHeaders }
+          );
+          if (rawRes.ok) {
+            const content = await rawRes.text();
+            results.push({
+              path: item.path,
+              extension: item.path.slice(item.path.lastIndexOf('.')),
+              content,
+              size: item.size || content.length
+            });
+          }
+        }
+
+        if (results.length > 0) return results;
+      }
+    } catch {
+      // Ignore GitHub API errors and proceed
     }
 
-    return this.getDemoRepositoryFiles();
+    if (isDemoRepo) {
+      return this.getDemoRepositoryFiles();
+    }
+
+    return [];
   }
 
   public getDemoRepositoryFiles(): ScannedFile[] {

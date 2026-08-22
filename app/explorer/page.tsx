@@ -14,16 +14,18 @@ export default function ExplorerPage() {
   const [filterType, setFilterType] = useState('All');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  const getSavedToken = () => {
+    return typeof window !== 'undefined' ? localStorage.getItem('nodeatlas_github_token') || undefined : undefined;
+  };
+
   const loadGraph = async () => {
     try {
-      const res = await fetch(`/api/repositories/${repoId}/graph`);
+      const token = getSavedToken();
+      const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+      const res = await fetch(`/api/repositories/${repoId}/graph${tokenQuery}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && data.nodes && data.nodes.length > 0) {
-          setGraphData(data);
-        } else {
-          await handleAnalyze();
-        }
+        setGraphData(data || { nodes: [], edges: [] });
       }
     } catch {
       // Fallback
@@ -37,12 +39,18 @@ export default function ExplorerPage() {
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     try {
+      const token = getSavedToken();
       await fetch(`/api/repositories/${repoId}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(repoMeta)
+        body: JSON.stringify({ ...repoMeta, githubToken: token })
       });
-      await loadGraph();
+      const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+      const res = await fetch(`/api/repositories/${repoId}/graph${tokenQuery}`);
+      if (res.ok) {
+        const data = await res.json();
+        setGraphData(data);
+      }
     } finally {
       setIsAnalyzing(false);
     }
