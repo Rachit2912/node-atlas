@@ -49,7 +49,7 @@ export default function PackagesPage() {
   }, [graphData, searchTerm]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       <NavigationHeader
         repoName={`${repoMeta.owner}/${repoMeta.repo}`}
         branch={repoMeta.branch}
@@ -65,24 +65,24 @@ export default function PackagesPage() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-white flex items-center space-x-2">
-              <Package className="w-5 h-5 text-amber-400" />
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white flex items-center space-x-2">
+              <Package className="w-5 h-5 text-amber-500 dark:text-amber-400" />
               <span>External Package Inventory</span>
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
               Third-party npm packages extracted from AST imports and package.json metadata.
             </p>
           </div>
 
-          <div className="w-72">
+          <div className="w-full md:w-72">
             <input
               type="text"
               placeholder="Filter packages..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500"
             />
           </div>
         </div>
@@ -96,34 +96,34 @@ export default function PackagesPage() {
             return (
               <div
                 key={pkg.id}
-                className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-3"
+                className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2">
-                    <Package className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="text-sm font-mono font-bold text-slate-200">{pkg.label}</span>
+                    <Package className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
+                    <span className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200">{pkg.label}</span>
                   </div>
                   <a
                     href={`https://www.npmjs.com/package/${pkg.label}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-slate-500 hover:text-slate-300"
+                    className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 font-mono bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 font-mono bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800/80">
                   <span className="flex items-center space-x-1.5">
-                    <FileCode className="w-3.5 h-3.5 text-blue-400" />
+                    <FileCode className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
                     <span>In-repo File Usages:</span>
                   </span>
-                  <span className="font-bold text-slate-200">{usageCount}</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-200">{usageCount}</span>
                 </div>
 
                 <Link
                   href="/security"
-                  className="flex items-center justify-center space-x-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-medium border border-slate-700 transition"
+                  className="flex items-center justify-center space-x-1.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-700 dark:text-amber-400 text-xs font-medium border border-slate-200 dark:border-slate-700 transition"
                 >
                   <ShieldAlert className="w-3.5 h-3.5" />
                   <span>Check Security Exposure</span>
