@@ -10,18 +10,15 @@ import {
   Edge,
   MarkerType
 } from '@xyflow/react';
+import { useTheme } from '@/lib/hooks/use-theme';
 import {
   FileCode,
   Package as PackageIcon,
   Server,
   AlertTriangle,
   Search,
-  Eye,
-  EyeOff,
-  SlidersHorizontal,
   Sparkles,
   Layers,
-  ChevronRight,
   Database
 } from 'lucide-react';
 
@@ -50,6 +47,8 @@ export function GraphViewer({
   highlightNodeIds = [],
   onSelectNode
 }: GraphViewerProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleTypes, setVisibleTypes] = useState<Record<string, boolean>>({
     File: true,
@@ -141,7 +140,6 @@ export function GraphViewer({
       // Node style definitions based on CognoDB Browser
       let orbGradient = 'from-amber-400 via-orange-500 to-amber-700 shadow-orange-500/40 border-orange-300/50';
       let icon = <FileCode className="w-5 h-5 text-white drop-shadow" />;
-      let badgeLabel = n.type || 'File';
 
       if (n.type === 'Package') {
         orbGradient = 'from-purple-300 via-indigo-500 to-purple-800 shadow-purple-500/40 border-purple-300/50';
@@ -180,7 +178,7 @@ export function GraphViewer({
 
               {/* Node Label Text Pill */}
               <div className="mt-1.5 flex flex-col items-center">
-                <span className="px-2 py-0.5 rounded bg-slate-950/85 backdrop-blur-md border border-slate-800 text-[11px] font-mono font-medium text-slate-100 max-w-[180px] truncate shadow-md group-hover:text-blue-300 transition-colors">
+                <span className="px-2 py-0.5 rounded bg-white/90 dark:bg-slate-950/85 backdrop-blur-md border border-slate-200 dark:border-slate-800 text-[11px] font-mono font-medium text-slate-800 dark:text-slate-100 max-w-[180px] truncate shadow-md group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors">
                   {n.label}
                 </span>
 
@@ -204,6 +202,10 @@ export function GraphViewer({
 
     const edges: Edge[] = filteredData.edges.map((e) => {
       const isCycleEdge = highlightSet.has(e.source) && highlightSet.has(e.target);
+      const labelFill = isCycleEdge ? '#ef4444' : isDark ? '#94a3b8' : '#334155';
+      const labelBgFill = isCycleEdge ? (isDark ? '#450a0a' : '#fef2f2') : (isDark ? '#090d16' : '#ffffff');
+      const strokeColor = isCycleEdge ? '#ef4444' : isDark ? '#475569' : '#94a3b8';
+
       return {
         id: e.id || `${e.source}->${e.target}`,
         source: e.source,
@@ -211,21 +213,21 @@ export function GraphViewer({
         type: 'smoothstep',
         animated: isCycleEdge,
         label: e.type,
-        labelStyle: { fill: isCycleEdge ? '#ef4444' : '#94a3b8', fontSize: 9, fontFamily: 'monospace', fontWeight: 600 },
-        labelBgStyle: { fill: '#090d16', rx: 3, ry: 3, fillOpacity: 0.9 },
+        labelStyle: { fill: labelFill, fontSize: 9, fontFamily: 'monospace', fontWeight: 600 },
+        labelBgStyle: { fill: labelBgFill, rx: 3, ry: 3, fillOpacity: 0.95 },
         style: {
-          stroke: isCycleEdge ? '#ef4444' : '#475569',
+          stroke: strokeColor,
           strokeWidth: isCycleEdge ? 2.5 : 1.5
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isCycleEdge ? '#ef4444' : '#475569'
+          color: strokeColor
         }
       };
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [filteredData, highlightSet, highlightNodeIds]);
+  }, [filteredData, highlightSet, highlightNodeIds, isDark]);
 
   const toggleTypeVisibility = (type: string) => {
     setVisibleTypes((prev) => ({ ...prev, [type]: !prev[type] }));
@@ -233,10 +235,10 @@ export function GraphViewer({
 
   if (!graphData.nodes || graphData.nodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 bg-[#090d16] border border-slate-800/80 rounded-xl">
+      <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 bg-slate-100 dark:bg-[#090d16] border border-slate-200 dark:border-slate-800/80 rounded-xl">
         <AlertTriangle className="w-10 h-10 mb-3 text-amber-500/80 animate-pulse" />
-        <p className="text-sm font-semibold text-slate-300">No Graph Visualization Data Available</p>
-        <p className="text-xs text-slate-500 mt-1 max-w-sm text-center">
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No Graph Visualization Data Available</p>
+        <p className="text-xs text-slate-500 dark:text-slate-500 mt-1 max-w-sm text-center">
           Connect a GitHub repository or toggle &quot;Demo Seed: ON&quot; in the navigation header to populate the graph database.
         </p>
       </div>
@@ -244,56 +246,56 @@ export function GraphViewer({
   }
 
   return (
-    <div className="relative w-full h-full bg-[#070a12] rounded-xl overflow-hidden border border-slate-800 shadow-2xl font-sans">
+    <div className="relative w-full h-full bg-slate-100 dark:bg-[#070a12] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl font-sans transition-colors duration-200">
       {/* Top Floating Search & Control Toolbar */}
-      <div className="absolute top-4 left-4 z-20 flex items-center space-x-3 bg-[#0d1322]/90 backdrop-blur-md border border-slate-800/80 rounded-lg p-2 shadow-xl">
+      <div className="absolute top-4 left-4 z-20 flex items-center space-x-3 bg-white/95 dark:bg-[#0d1322]/90 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-lg p-2 shadow-xl">
         <button
           onClick={() => setShowLeftSidebar(!showLeftSidebar)}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded border text-xs font-mono transition ${
             showLeftSidebar
-              ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
-              : 'bg-slate-800/60 border-slate-700 text-slate-400'
+              ? 'bg-blue-50 dark:bg-blue-600/20 border-blue-500/40 text-blue-600 dark:text-blue-300'
+              : 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
           <span>{showLeftSidebar ? 'Hide Inspector' : 'Show Inspector'}</span>
         </button>
 
-        <div className="flex items-center space-x-2 bg-[#050810] px-3 py-1.5 rounded border border-slate-800/80 w-64">
+        <div className="flex items-center space-x-2 bg-slate-50 dark:bg-[#050810] px-3 py-1.5 rounded border border-slate-200 dark:border-slate-800/80 w-64">
           <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="Search graph nodes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-xs text-slate-200 focus:outline-none font-mono placeholder-slate-500"
+            className="w-full bg-transparent text-xs text-slate-900 dark:text-slate-200 focus:outline-none font-mono placeholder-slate-400 dark:placeholder-slate-500"
           />
         </div>
       </div>
 
       {/* Authentic CognoDB Browser Left Sidebar */}
       {showLeftSidebar && (
-        <div className="absolute top-16 left-4 z-20 bg-[#0d1322]/95 backdrop-blur-md border border-slate-800/90 rounded-xl p-3.5 w-64 shadow-2xl space-y-4 font-mono text-xs">
+        <div className="absolute top-16 left-4 z-20 bg-white/95 dark:bg-[#0d1322]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800/90 rounded-xl p-3.5 w-64 shadow-2xl space-y-4 font-mono text-xs text-slate-900 dark:text-slate-100">
           {/* NODE LABELS Section */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800/80 pb-1.5">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800/80 pb-1.5">
               <span>NODE LABELS</span>
-              <span className="text-[9px] text-slate-500 font-normal">click to toggle</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-normal">click to toggle</span>
             </div>
 
             <div className="space-y-1">
               {/* Package Label */}
               <button
                 onClick={() => toggleTypeVisibility('Package')}
-                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800/60 transition text-left"
               >
                 <div className="flex items-center space-x-2">
                   <span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm shadow-purple-500/50"></span>
-                  <span className={visibleTypes.Package ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                  <span className={visibleTypes.Package ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600 line-through'}>
                     Package
                   </span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-semibold">
                   {stats.counts.Package || 0}
                 </span>
               </button>
@@ -301,15 +303,15 @@ export function GraphViewer({
               {/* PackageVersion Label */}
               <button
                 onClick={() => toggleTypeVisibility('PackageVersion')}
-                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800/60 transition text-left"
               >
                 <div className="flex items-center space-x-2">
                   <span className="w-3 h-3 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/50"></span>
-                  <span className={visibleTypes.PackageVersion ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                  <span className={visibleTypes.PackageVersion ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600 line-through'}>
                     PackageVersion
                   </span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-semibold">
                   {stats.counts.PackageVersion || 0}
                 </span>
               </button>
@@ -317,15 +319,15 @@ export function GraphViewer({
               {/* File Label */}
               <button
                 onClick={() => toggleTypeVisibility('File')}
-                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800/60 transition text-left"
               >
                 <div className="flex items-center space-x-2">
                   <span className="w-3 h-3 rounded-full bg-orange-500 shadow-sm shadow-orange-500/50"></span>
-                  <span className={visibleTypes.File ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                  <span className={visibleTypes.File ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600 line-through'}>
                     File
                   </span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-semibold">
                   {stats.counts.File || 0}
                 </span>
               </button>
@@ -333,15 +335,15 @@ export function GraphViewer({
               {/* Service Label */}
               <button
                 onClick={() => toggleTypeVisibility('Service')}
-                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800/60 transition text-left"
+                className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800/60 transition text-left"
               >
                 <div className="flex items-center space-x-2">
                   <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
-                  <span className={visibleTypes.Service ? 'text-slate-200' : 'text-slate-600 line-through'}>
+                  <span className={visibleTypes.Service ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600 line-through'}>
                     Service
                   </span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-semibold">
+                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-semibold">
                   {stats.counts.Service || 0}
                 </span>
               </button>
@@ -349,26 +351,26 @@ export function GraphViewer({
           </div>
 
           {/* RELATIONSHIPS Section */}
-          <div className="space-y-2 pt-1 border-t border-slate-800/80">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800/80 pb-1.5">
+          <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800/80">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800/80 pb-1.5">
               <span>RELATIONSHIPS</span>
             </div>
 
-            <div className="space-y-1 text-[11px] text-slate-300">
+            <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300">
               {Object.entries(stats.relCounts).map(([relType, count]) => (
-                <div key={relType} className="flex items-center justify-between px-2 py-1 rounded bg-slate-900/50">
-                  <span className="text-slate-400 text-[10px]">— {relType}</span>
-                  <span className="text-slate-300 font-semibold">{count}</span>
+                <div key={relType} className="flex items-center justify-between px-2 py-1 rounded bg-slate-50 dark:bg-slate-900/50">
+                  <span className="text-slate-500 dark:text-slate-400 text-[10px]">— {relType}</span>
+                  <span className="text-slate-800 dark:text-slate-300 font-semibold">{count}</span>
                 </div>
               ))}
               {Object.keys(stats.relCounts).length === 0 && (
-                <div className="text-[10px] text-slate-500 px-2 py-1">No relationships active</div>
+                <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 py-1">No relationships active</div>
               )}
             </div>
           </div>
 
           {/* Bottom CognoDB Stats Bar */}
-          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
             <span>{filteredData.nodes.length} nodes</span>
             <span>{filteredData.edges.length} rels</span>
           </div>
@@ -387,8 +389,8 @@ export function GraphViewer({
         }}
         fitView
       >
-        <Background color="#1e293b" gap={24} size={1} />
-        <Controls className="bg-[#0d1322] border-slate-800 text-slate-200 fill-slate-200 rounded-lg overflow-hidden shadow-xl" />
+        <Background color={isDark ? '#1e293b' : '#cbd5e1'} gap={24} size={1} />
+        <Controls className="bg-white dark:bg-[#0d1322] border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 fill-slate-700 dark:fill-slate-200 rounded-lg overflow-hidden shadow-xl" />
         <MiniMap
           nodeColor={(node) => {
             if (node.id.includes('service')) return '#10b981';
@@ -396,13 +398,13 @@ export function GraphViewer({
             if (node.id.includes('version')) return '#22d3ee';
             return '#a855f7';
           }}
-          maskColor="rgba(7, 10, 18, 0.85)"
-          className="bg-[#0d1322] border-slate-800 rounded-lg overflow-hidden shadow-xl"
+          maskColor={isDark ? 'rgba(7, 10, 18, 0.85)' : 'rgba(241, 245, 249, 0.85)'}
+          className="bg-white dark:bg-[#0d1322] border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden shadow-xl"
         />
       </ReactFlow>
 
       {/* Bottom Hint Footer matching CognoDB Browser */}
-      <div className="absolute bottom-3 right-4 z-10 text-[10px] font-mono text-slate-500 bg-[#0d1322]/80 backdrop-blur px-2.5 py-1 rounded border border-slate-800/60">
+      <div className="absolute bottom-3 right-4 z-10 text-[10px] font-mono text-slate-500 dark:text-slate-500 bg-white/80 dark:bg-[#0d1322]/80 backdrop-blur px-2.5 py-1 rounded border border-slate-200 dark:border-slate-800/60 shadow">
         click node to inspect &bull; drag to position &bull; scroll to zoom
       </div>
     </div>

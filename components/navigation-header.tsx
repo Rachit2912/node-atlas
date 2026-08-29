@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from '@/lib/hooks/use-theme';
 import {
   LayoutDashboard,
   Network,
@@ -14,7 +15,9 @@ import {
   Github,
   Play,
   Key,
-  ChevronDown
+  ChevronDown,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -35,6 +38,7 @@ export function NavigationHeader({
   onSelectRepo
 }: HeaderProps) {
   const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [tokenInput, setTokenInput] = useState('');
   const [repositories, setRepositories] = useState<any[]>([]);
@@ -145,29 +149,29 @@ export function NavigationHeader({
   ];
 
   return (
-    <div className="flex flex-col border-b border-slate-800 bg-slate-900/80 backdrop-blur">
-      <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800/80">
+    <div className="flex flex-col border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur transition-colors duration-200">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200/80 dark:border-slate-800/80">
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 text-blue-500 font-bold text-lg tracking-tight">
-            <Layers className="w-6 h-6 text-blue-400" />
+          <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-500 font-bold text-lg tracking-tight">
+            <Layers className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             <span>NodeAtlas</span>
           </div>
-          <span className="text-slate-600">/</span>
+          <span className="text-slate-300 dark:text-slate-600">/</span>
 
           {/* Repository Selector Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowRepoDropdown(!showRepoDropdown)}
-              className="flex items-center space-x-2 px-3 py-1 rounded-md bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-xs font-mono text-slate-200 transition"
+              className="flex items-center space-x-2 px-3 py-1 rounded-md bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700/60 text-xs font-mono text-slate-800 dark:text-slate-200 transition"
             >
-              <Github className="w-4 h-4 text-slate-400" />
+              <Github className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               <span>{repoName}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             </button>
 
             {showRepoDropdown && (
-              <div className="absolute left-0 mt-2 w-72 rounded-lg bg-slate-900 border border-slate-800 shadow-xl z-50 p-2 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-500 px-2 py-1 block">Select Repository</span>
+              <div className="absolute left-0 mt-2 w-72 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 p-2 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-2 py-1 block">Select Repository</span>
                 {repositories.map((repo) => (
                   <button
                     key={repo.id}
@@ -175,46 +179,66 @@ export function NavigationHeader({
                       if (onSelectRepo) onSelectRepo(repo);
                       setShowRepoDropdown(false);
                     }}
-                    className="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-800 text-xs font-mono text-slate-300 flex items-center justify-between"
+                    className="w-full text-left px-2.5 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 flex items-center justify-between"
                   >
                     <span className="truncate">{repo.fullName}</span>
-                    <span className="text-[10px] text-slate-500 ml-2">{repo.defaultBranch}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-2">{repo.defaultBranch}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="flex items-center space-x-1.5 text-xs text-slate-400 bg-slate-800/40 px-2 py-1 rounded border border-slate-800">
-            <GitBranch className="w-3.5 h-3.5 text-slate-500" />
+          <div className="flex items-center space-x-1.5 text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/40 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+            <GitBranch className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             <span>{branch}</span>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-xs font-medium transition"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle Theme"
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Light Mode</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="hidden sm:inline">Dark Mode</span>
+              </>
+            )}
+          </button>
+
           {/* Demo Data Pre-seed Toggle Button */}
           <button
             onClick={handleToggleDemoSeed}
             disabled={isTogglingDemo}
             className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md border text-xs font-mono transition ${
               isDemoSeeded
-                ? 'bg-amber-950/40 border-amber-700/60 text-amber-300 hover:bg-amber-900/40'
-                : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-slate-200'
+                ? 'bg-amber-100 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/40'
+                : 'bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
             title="Toggle pre-seeded demo dataset"
           >
-            <span className={`w-2 h-2 rounded-full ${isDemoSeeded ? 'bg-amber-400 animate-pulse' : 'bg-slate-500'}`} />
+            <span className={`w-2 h-2 rounded-full ${isDemoSeeded ? 'bg-amber-500 dark:bg-amber-400 animate-pulse' : 'bg-slate-400 dark:bg-slate-500'}`} />
             <span>{isTogglingDemo ? 'Updating...' : isDemoSeeded ? 'Demo Seed: ON' : 'Demo Seed: OFF'}</span>
           </button>
 
           {/* Connect / Disconnect GitHub Button */}
           {isConnected ? (
-            <div className="flex items-center space-x-1 bg-emerald-950/40 border border-emerald-800/60 rounded-md px-2.5 py-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs text-emerald-300 font-medium font-mono">GitHub Connected</span>
+            <div className="flex items-center space-x-1 bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/60 rounded-md px-2.5 py-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+              <span className="text-xs text-emerald-800 dark:text-emerald-300 font-medium font-mono">GitHub Connected</span>
               <button
                 onClick={handleDisconnect}
-                className="ml-2 text-[11px] text-slate-400 hover:text-red-400 underline transition"
+                className="ml-2 text-[11px] text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 underline transition"
                 title="Disconnect GitHub Token"
               >
                 Disconnect
@@ -223,15 +247,15 @@ export function NavigationHeader({
           ) : (
             <button
               onClick={() => setShowConnectModal(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-300 dark:border-slate-700 transition"
             >
-              <Key className="w-3.5 h-3.5 text-slate-400" />
+              <Key className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Connect GitHub</span>
             </button>
           )}
 
           {lastAnalyzed && (
-            <span className="text-xs text-slate-400 font-mono hidden md:inline">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono hidden md:inline">
               Last analyzed: {new Date(lastAnalyzed).toLocaleTimeString()}
             </span>
           )}
@@ -266,8 +290,8 @@ export function NavigationHeader({
               href={item.href}
               className={`flex items-center space-x-2 px-3 py-2 text-xs font-medium border-b-2 transition ${
                 isActive
-                  ? 'border-blue-500 text-blue-400 bg-blue-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/5'
+                  : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -279,21 +303,21 @@ export function NavigationHeader({
 
       {/* GitHub Connect Modal */}
       {showConnectModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-200 flex items-center space-x-2">
-                <Github className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-200 flex items-center space-x-2">
+                <Github className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>Connect GitHub Personal Access Token</span>
               </h3>
               <button
                 onClick={() => setShowConnectModal(false)}
-                className="text-slate-500 hover:text-slate-300 text-xs"
+                className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 text-xs"
               >
                 Cancel
               </button>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Enter a GitHub Personal Access Token (`repo` scope) to list and select private repositories for NodeAtlas analysis. Token is never exposed to the client or saved in raw database logs.
             </p>
             <form onSubmit={handleConnect} className="space-y-3">
@@ -302,7 +326,7 @@ export function NavigationHeader({
                 placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-200 focus:outline-none focus:border-blue-500"
               />
               <button
                 type="submit"
